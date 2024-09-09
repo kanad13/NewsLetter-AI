@@ -1,0 +1,10 @@
+streamlit
+sentence-transformers
+pypdf
+langchain
+faiss-cpu
+python-dotenv
+IProgress
+google-generativeai
+google-cloud-aiplatform
+google-cloud-logging
