@@ -1,0 +1,44 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+steps:
+  # Build the container image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA",
+        ".",
+      ]
+  # Push the container image to Container Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"]
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "ragify"
+      - "--image"
+      - "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"
+      - "--region"
+      - "us-west1"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--memory"
+      - "16Gi"
+  # Set IAM policy to allow public access
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "services"
+      - "add-iam-policy-binding"
+      - "ragify"
+      - "--region=us-west1"
+      - "--member=allUsers"
+      - "--role=roles/run.invoker"
+images:
+  - "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"
