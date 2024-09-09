@@ -117,7 +117,7 @@ So for example, if an employee wants to know what are "current month's customer 
 As fresh newsletters get published or old newsletters get corrected, you just need to place them in the [input_files folder](./input_files). No code changes needed to the chatbot. The chatbot starts providing answers based on latest information.
 This is on account of the **intelligent hash-based cache management** implemented in NewsLetter.AI. You can find more details - [here](./readme.md#uniqueness-of-rag-logic-in-newsletterai)
 
-## Uniqueness of RAG logic in NewsLetter.AI
+## What sets NewsLetter.AI apart?
 
 - **Choice of Language Models**
   - The frontend allows users to choose between different models, empowering them to match their needs:
@@ -313,6 +313,25 @@ flowchart TD
         W
     end
 ```
+
+## Deploy on Google Cloud
+
+- The deployment of NewsLetter.AI on google cloud is **fully automated** and CI-CD compliant.
+- All that you need to do is update the values in the [cloudbuild.yaml](cloudbuild.yaml) with relevant
+  - project name
+  - region name
+- Also create or reuse a **service account** that has the below privileges for accessing the project where NewsLetter.AI is hosted:
+  - Cloud Run Admin
+  - Editor
+  - Vertex AI Administrator
+- Additionally, you would have to create a [Cloud Build Trigger](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers) with below attributes
+  - Event - `Push`
+  - Configuration - `Autodetected`
+  - Location - `Repository` (add access to the github repo)
+  - Select the [GitHub repository](https://github.com/kanad13/NewsLetter-AI) and configure the trigger to activate on push events.
+  - Service account - Select the one created above
+  - Click `Create trigger`.
+  - Make sure to specify the branch (e.g., `main` or `master`) you want to trigger the build on.
 
 ## Acknowledgements
 

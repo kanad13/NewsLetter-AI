@@ -3,25 +3,27 @@ options:
 steps:
   # Build the container image
   - name: "gcr.io/cloud-builders/docker"
-    args:
-      [
+    args: [
         "build",
         "-t",
-        "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA",
+        "gcr.io/gifted-audio-434718-s6/NewsLetter-AI-image:$COMMIT_SHA", #update project name
         ".",
       ]
   # Push the container image to Container Registry
   - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"]
+    args: [
+        "push",
+        "gcr.io/gifted-audio-434718-s6/NewsLetter-AI-image:$COMMIT_SHA",
+      ] #update project name
   # Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
       - "run"
       - "deploy"
-      - "ragify"
+      - "NewsLetter-AI"
       - "--image"
-      - "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"
+      - "gcr.io/gifted-audio-434718-s6/NewsLetter-AI-image:$COMMIT_SHA" #update project name
       - "--region"
       - "us-west1"
       - "--platform"
@@ -36,9 +38,9 @@ steps:
       - "run"
       - "services"
       - "add-iam-policy-binding"
-      - "ragify"
-      - "--region=us-west1"
+      - "NewsLetter-AI"
+      - "--region=us-west1" #update region
       - "--member=allUsers"
       - "--role=roles/run.invoker"
 images:
-  - "gcr.io/gifted-audio-434718-s6/ragify-image:$COMMIT_SHA"
+  - "gcr.io/gifted-audio-434718-s6/NewsLetter-AI-image:$COMMIT_SHA" #update project name
