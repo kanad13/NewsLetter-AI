@@ -324,6 +324,7 @@ flowchart TD
   - Cloud Run Admin
   - Editor
   - Vertex AI Administrator
+  - Storage Admin
 - Additionally, you would have to create a [Cloud Build Trigger](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers) with below attributes
   - Event - `Push`
   - Configuration - `Autodetected`
