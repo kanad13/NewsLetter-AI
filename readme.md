@@ -314,25 +314,107 @@ flowchart TD
     end
 ```
 
-## Deploy on Google Cloud
+## NewsLetter.AI workflow
 
-- The deployment of NewsLetter.AI on google cloud is **fully automated** and CI-CD compliant.
-- All that you need to do is update the values in the [cloudbuild.yaml](cloudbuild.yaml) with relevant
-  - project name
-  - region name
-- Also create or reuse a **service account** that has the below privileges for accessing the project where NewsLetter.AI is hosted:
-  - Cloud Run Admin
-  - Editor
-  - Vertex AI Administrator
-  - Storage Admin
-- Additionally, you would have to create a [Cloud Build Trigger](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers) with below attributes
-  - Event - `Push`
-  - Configuration - `Autodetected`
-  - Location - `Repository` (add access to the github repo)
-  - Select the [GitHub repository](https://github.com/kanad13/NewsLetter-AI) and configure the trigger to activate on push events.
-  - Service account - Select the one created above
-  - Click `Create trigger`.
-  - Make sure to specify the branch (e.g., `main` or `master`) you want to trigger the build on.
+- **Varaition 1**
+
+```mermaid
+graph LR;
+    subgraph Google Cloud
+        B[Cloud Run Instance<br>Running Streamlit Application] --> C[Vertex AI];
+        D[Cloud Storage] --> B;
+    end
+    A[Vodafone Users] --> B;
+    E[Newsletters] --> D;
+```
+
+- **Varaition 2**
+
+```mermaid
+graph LR
+    A[Vodafone User] --> B[Streamlit Frontend]
+    B --> C[RAG System]
+    D[User Documents] --> E[Cloud Storage]
+    E --> C
+    C --> G[Vertex AI LLM]
+```
+
+## Fully Automated DevOps Strategy
+
+This section outlines a fully automated DevOps strategy for NewsLetter.AI.
+The workflow automates the process of building, testing, and deploying a NewsLetter.AI.
+
+**Components**
+
+1. `GitHub Repository` - Hosts the application code and configuration files.
+2. `cloudbuild.yaml` - Defines the build and deployment steps.
+3. `Google Cloud Build` - Automates the build process.
+4. `Google Artifact Registry` - Stores Docker images.
+5. `Google Cloud Run` - Hosts the deployed web application.
+
+```mermaid
+graph LR
+    A[GitHub Repo] -->|Push| B[Cloud Build Trigger]
+    B --> C[Cloud Build]
+    C --> D[Artifact Registry]
+    D --> E[Cloud Run]
+```
+
+**Workflow**
+
+1. `Code Commit`
+   1. Developers push code changes to the GitHub repository.
+2. `Trigger Activation`
+   1. A pre-configured Google Cloud Build trigger detects the new commit.
+   2. The trigger automatically initiates a new build process.
+3. `Build Process`
+   1. Google Cloud Build clones the repository.
+   2. It executes the steps defined in the `cloudbuild.yaml` file.
+4. `Image Storage`
+   1. The newly created Docker image is pushed to Google Artifact Registry.
+5. `Deployment`
+   1. Google Cloud Build deploys the new image to Cloud Run.
+   2. Cloud Run automatically routes traffic to the new version of the application.
+
+```mermaid
+graph TD
+    A[Developer] -->|Commit & Push| B[GitHub Repo]
+    B -->|Trigger| C[Cloud Build]
+    C -->|Clone Repo| D[Build Process]
+    D -->|Read| E[cloudbuild.yaml]
+    D -->|Execute Steps| F[Create Docker Image]
+    F -->|Push| G[Artifact Registry]
+    G -->|Deploy| H[Cloud Run]
+    H -->|Serve| I[Users]
+```
+
+**Benefits**
+
+1. `Automation`: Reduces manual intervention and human error.
+2. `Speed`: Accelerates the delivery of new features and bug fixes.
+3. `Consistency`: Ensures all deployments follow the same process.
+4. `Scalability`: Cloud Run automatically scales based on traffic.
+5. `Cost-Efficiency`: Pay only for the resources you use.
+
+**Pre-requisites**
+
+1. To setup NewsLetter.AI on a new environment, these are the steps you need to follow
+2. Update the values in the [cloudbuild.yaml](cloudbuild.yaml) with relevant
+   1. project name
+   2. region name
+3. Also create or reuse a **service account** that has the below privileges for accessing the project where NewsLetter.AI is hosted:
+   1. Cloud Run Admin
+   2. Editor
+   3. Vertex AI Administrator
+   4. Storage Admin
+4. Additionally, you would have to create a [Cloud Build Trigger](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers) with below attributes
+   1. Event `Push`
+   2. Configuration `Autodetected`
+   3. Location `Repository` (add access to the github repo)
+   4. Select the [GitHub repository](https://github.com/kanad13/NewsLetter-AI) and configure the trigger to activate on push events.
+   5. Service account Select the one created above
+   6. Click `Create trigger`.
+   7. Make sure to specify the branch (e.g., `main` or `master`) you want to trigger the build on.
 
 ## Acknowledgements
 
