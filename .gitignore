@@ -588,3 +588,5 @@ rag_venv/
 semantic_cache.json
 blunder_mifflin_index.faiss
 .DS_Store
+news_venv
+faiss_index.pkl

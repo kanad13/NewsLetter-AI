@@ -13,20 +13,24 @@ from dotenv import load_dotenv
 import streamlit as st
 import hashlib
 import time
+import pickle
 
-# I have loaded environment variables here to keep sensitive information secure and flexible across different environments. This is to be used primarily when running on local machine.
+# I have loaded environment variables to keep sensitive information out of the codebase.
+# This is crucial for security and allows for easy configuration changes across environments.
+# This is to be used primarily when running on local machine.
 load_dotenv()
 
-# I have set up logging here to track the application's execution and help debug issues, crucial for production monitoring.
+# I have set up logging to track execution and debug issues.
+# Proper logging is essential for monitoring and troubleshooting in production environments.
 logging.basicConfig(level=logging.INFO)
 
-# Here I have initialized Vertex AI with credentials from environment variables, enabling access to Google Cloud resources.
+# I have initialized Vertex AI with credentials from environment variables, enabling access to Google Cloud resources.
 PROJECT_ID = os.environ.get("GCP_PROJECT")
 LOCATION = os.environ.get("GCP_REGION")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 
-# I have loaded a pre-trained sentence transformer model to generate text embeddings.
-# The 'all-mpnet-base-v2' model offers a good balance between performance and accuracy.
+# I have loaded a pre-trained sentence transformer model for generating text embeddings.
+# I chose 'all-mpnet-base-v2' for its balance of performance and accuracy.
 # This model is crucial for converting text to vector representations for similarity search.
 model_name = 'all-mpnet-base-v2'
 model = SentenceTransformer(model_name)
@@ -73,8 +77,8 @@ def get_gemini_response(model, contents, generation_config=None, stream=False):
     return " ".join(final_response)
 
 def extract_text_from_pdf(pdf_path):
-    # I have extracted text from PDF files to facilitate text-based searches and analysis.
-    # This enables the system to handle diverse document formats.
+    # I have extracted text from PDFs to make the content searchable.
+    # This allows me to work with various document formats in a unified way.
     with open(pdf_path, 'rb') as file:
         reader = PdfReader(file)
         text = ''
@@ -83,8 +87,10 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 def create_chunks(text, chunk_size=1000, chunk_overlap=200):
-    # Here I have split long texts into manageable chunks, ensuring they fit within model token limits.
-    # Overlapping chunks preserve context for improved retrieval accuracy.
+    # I have chunked the text for two main reasons:
+    # 1. It allows me to process long documents that might exceed model token limits.
+    # 2. It creates more granular pieces of text, improving retrieval accuracy.
+    # I have used overlap to maintain context between chunks.
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -94,8 +100,8 @@ def create_chunks(text, chunk_size=1000, chunk_overlap=200):
     return chunks
 
 def get_files_hash(directory):
-    # I have used a hashing mechanism to detect changes in input files.
-    # This approach ensures the knowledge base stays current without unnecessary reprocessing.
+    # I have hashed the input files to detect changes.
+    # This is useful for maintaining an up-to-date knowledge base without unnecessary reprocessing.
     hash_md5 = hashlib.md5()
     for filename in sorted(os.listdir(directory)):
         if filename.endswith('.pdf'):
@@ -106,14 +112,16 @@ def get_files_hash(directory):
 
 @st.cache_data
 def process_pdfs(_hash=None):
-    # Caching helps avoid reprocessing PDFs on every run, significantly boosting performance for repeated queries.
+    # I have used caching to avoid reprocessing PDFs on every run.
+    # This significantly improves performance for repeated queries.
     pdf_directory = './input_files/'
     current_hash = get_files_hash(pdf_directory)
 
-    # I have set up cache clearance when input files change, ensuring data accuracy and relevance.
+    # I have cleared the cache if input files have changed.
+    # This ensures we're always working with the most up-to-date information.
     if _hash is not None and _hash != current_hash:
         st.cache_data.clear()
-        st.cache_resource.clear()  # Clear the FAISS index cache
+        st.cache_resource.clear()  # Clear the FAISS index cache as well
 
     all_chunks = []
     chunk_to_doc = {}
@@ -126,21 +134,30 @@ def process_pdfs(_hash=None):
             for chunk in chunks:
                 chunk_to_doc[chunk] = filename
 
-    # Logging the chunking process helps in debugging and monitoring stages.
+    # I have used logging to help with debugging and monitoring the chunking process.
     logging.info(f"Total chunks: {len(all_chunks)}")
     logging.info(f"Sample chunk: {all_chunks[0][:100]}...")
 
     return all_chunks, chunk_to_doc, current_hash
 
-# I have deployed FAISS for efficient similarity search, which is critical for retrieving relevant text rapidly.
 @st.cache_resource
 def create_faiss_index(all_chunks, _hash=None):
-    # The _hash parameter is used to invalidate the cache when files change
+    # I have used FAISS for efficient similarity search.
+    # This is crucial for quickly finding relevant chunks when answering queries.
+    index_file = 'faiss_index.pkl'
+    if os.path.exists(index_file) and _hash is None:
+        # Load existing index if available and no changes in source documents
+        with open(index_file, 'rb') as f:
+            index = pickle.load(f)
+        print("Loaded existing FAISS index.")
+        return index
+
     embeddings = model.encode(all_chunks)
     dimension = embeddings.shape[1]
     num_chunks = len(all_chunks)
 
-    # Selecting index type dynamically optimizes search performance based on dataset size.
+    # I have dynamically chosen the index type based on the dataset size.
+    # This optimizes search performance: FlatL2 for small datasets, IVFFlat for larger ones.
     if num_chunks < 100:
         logging.info("Using FlatL2 index due to small number of chunks")
         index = faiss.IndexFlatL2(dimension)
@@ -152,17 +169,25 @@ def create_faiss_index(all_chunks, _hash=None):
         index.train(embeddings.astype('float32'))
 
     index.add(embeddings.astype('float32'))
+
+    # Save the newly created index for future use
+    with open(index_file, 'wb') as f:
+        pickle.dump(index, f)
+    print("Created and saved new FAISS index.")
+
     return index
 
-# I have initialized a cache system for storing query results, ensuring faster response times for repeat queries.
+# I have initialized a cache for storing query results.
+# Caching improves response times for repeated or similar queries.
 cache_file = 'semantic_cache.json'
 
 def load_cache():
-    # Here I have loaded the cache from a file to maintain session state, which aids system efficiency over time.
+    # I have loaded the cache from a file to persist it across sessions.
+    # This improves the system's efficiency over time.
     try:
         with open(cache_file, 'r') as f:
             cache = json.load(f)
-            # Resetting the cache if the embedding model changes ensures data consistency.
+            # I have reset the cache if the embedding model changes to ensure consistency.
             if cache.get('model_name') != model_name:
                 logging.info("Embedding model changed. Resetting cache.")
                 return {"queries": [], "embeddings": [], "responses": [], "model_name": model_name}
@@ -171,14 +196,15 @@ def load_cache():
         return {"queries": [], "embeddings": [], "responses": [], "model_name": model_name}
 
 def save_cache(cache):
-    # Regularly saving the cache prevents loss of valuable precomputed results, enhancing reliability.
+    # I regularly save the cache to ensure I don't lose valuable precomputed results.
     with open(cache_file, 'w') as f:
         json.dump(cache, f)
 
 cache = load_cache()
 
 def retrieve_from_cache(query_embedding, threshold=0.5):
-    # I have used semantic caching to repurpose results for similar queries, reducing API calls and improving efficiency.
+    # I have implemented semantic caching to reuse results for similar queries.
+    # This significantly reduces API calls and improves response times.
     for i, cached_embedding in enumerate(cache['embeddings']):
         if len(cached_embedding) != len(query_embedding):
             logging.warning("Cached embedding dimension mismatch. Skipping cache entry.")
@@ -189,7 +215,7 @@ def retrieve_from_cache(query_embedding, threshold=0.5):
     return None
 
 def update_cache(query, query_embedding, response):
-    # Adding new queries to the cache continually improves response times as more data is accumulated.
+    # I have updated the cache with new queries to continually improve performance.
     cache['queries'].append(query)
     cache['embeddings'].append(query_embedding.tolist())
     cache['responses'].append(response)
@@ -197,7 +223,8 @@ def update_cache(query, query_embedding, response):
     save_cache(cache)
 
 def retrieve_relevant_chunks(query, index, all_chunks, top_k=10):
-    # Using vector similarity, I identify the most relevant chunks, which provides superior context recognition than mere keyword matching.
+    # I have used vector similarity to find the most relevant chunks.
+    # This is more effective than keyword matching for understanding context and semantics.
     query_vector = model.encode([query])[0]
 
     cached_response = retrieve_from_cache(query_vector)
@@ -205,7 +232,7 @@ def retrieve_relevant_chunks(query, index, all_chunks, top_k=10):
         logging.info("Answer recovered from Cache.")
         return cached_response
 
-    # Ensuring top_k doesn't exceed available chunks prevents errors during retrieval.
+    # I have limited top_k to avoid retrieving more chunks than available.
     top_k = min(top_k, len(all_chunks))
     D, I = index.search(np.array([query_vector]).astype('float32'), top_k)
     relevant_chunks = [all_chunks[i] for i in I[0]]
@@ -214,7 +241,8 @@ def retrieve_relevant_chunks(query, index, all_chunks, top_k=10):
     return relevant_chunks
 
 def generate_response(query: str, relevant_chunks: List[str], model: GenerativeModel, max_retries: int = 3):
-    # I have employed a language model to generate responses, leveraging context from retrieved chunks to ensure natural language delivery.
+    # I have used a language model to generate responses based on retrieved chunks.
+    # This allows for more natural and contextually appropriate answers.
     context = "\n".join(relevant_chunks)
     prompt = f"""Based on the following context, please answer the question. If the answer is not fully contained in the context, provide the most relevant information available and indicate any uncertainty.
 
@@ -227,6 +255,8 @@ Answer:"""
 
     generation_config = GenerationConfig(temperature=0.7, max_output_tokens=1024)
 
+    # I have implemented retry logic for robustness.
+    # This ensures the system can handle API errors gracefully.
     for attempt in range(max_retries):
         try:
             response = get_gemini_response(model, prompt, generation_config, stream=False)
@@ -240,10 +270,12 @@ Answer:"""
     raise Exception("Failed to generate response after maximum retries.")
 
 def rag_query(query: str, index, all_chunks, chunk_to_doc, model: GenerativeModel, top_k: int = 10) -> tuple:
-    # This function orchestrates retrieval and generation, ensuring well-informed, coherent user responses.
+    # I have combined retrieval and generation for a complete RAG pipeline.
+    # RAG allows us to ground the model's responses in specific, relevant information.
     relevant_chunks = retrieve_relevant_chunks(query, index, all_chunks, top_k)
     response, used_chunks = generate_response(query, relevant_chunks, model)
 
+    # I have tracked source documents for transparency and citation.
     source_docs = {}
     for chunk in used_chunks:
         doc_name = chunk_to_doc.get(chunk, "Unknown Source")
@@ -253,18 +285,18 @@ def rag_query(query: str, index, all_chunks, chunk_to_doc, model: GenerativeMode
 
     return response, source_docs
 
-# I have configured the Streamlit app, utilizing it for a rapid-prototyping-friendly and deployable user interface.
+# I have used Streamlit for rapid prototyping and easy deployment of the user interface.
 st.set_page_config(page_title="NewsLetter.AI", page_icon=":soccer:", layout="wide", initial_sidebar_state="expanded", menu_items=None)
 
 def main():
     st.write("Search about desired topics within the newsletters:")
 
-    # Processing PDFs and creating the index at application start ensures users interact with updated data immediately.
+    # I have processed PDFs and created the index at the start to ensure up-to-date information.
     all_chunks, chunk_to_doc, current_hash = process_pdfs()
-    index = create_faiss_index(all_chunks, _hash=current_hash)  # Pass the hash to create_faiss_index
+    index = create_faiss_index(all_chunks, _hash=current_hash)
     gemini_15_flash, gemini_15_pro = load_models()
 
-    # Default questions are provided to guide users and showcase system functionality.
+    # I have provided default questions to guide users and demonstrate system capabilities.
     default_questions = [
         "Select a question",
         "what is the UltraFiber 2.0 service?",
@@ -276,7 +308,7 @@ def main():
         "Other (Type your own question)"
     ]
 
-    # Here I have used a dropdown for user-friendliness while allowing custom queries for flexibility.
+    # I have used a dropdown for ease of use, but also allowed custom questions for flexibility.
     selected_question = st.selectbox("Choose a question or select 'Other' to type your own:", default_questions)
 
     if selected_question == "Other (Type your own question)":
@@ -293,15 +325,17 @@ def main():
         horizontal=True,
     )
 
+    # I have used a button to trigger the query process, giving users control over when to send a request.
     if st.button("Get Answer"):
         if user_query and user_query != "Select a question":
             with st.spinner("Generating answer..."):
                 # Re-checking PDF changes ensures responses rely on the latest data.
                 all_chunks, chunk_to_doc, _ = process_pdfs(current_hash)
-                index = create_faiss_index(all_chunks)
+                index = create_faiss_index(all_chunks, _hash=current_hash)
                 response, source_docs = rag_query(user_query, index, all_chunks, chunk_to_doc, selected_model)
 
             # Displaying responses, sources, and usage data promotes transparency with users.
+
             st.subheader("Answer:")
             st.write(response)
 
