@@ -14,7 +14,6 @@
 import subprocess
 import streamlit as st
 import os
-import json
 
 def flush_caches_and_rebuild():
     # Clear Streamlit cache
@@ -28,8 +27,8 @@ def flush_caches_and_rebuild():
     print("All caches have been cleared.")
 
     # Rebuild indexes by running the main script
-    #os.system('streamlit run Welcome.py')
-		subprocess.run(['streamlit', 'run', 'Welcome.py'], check=True)
+		#os.system('streamlit run Welcome.py')
+    #subprocess.run(['streamlit', 'run', 'Welcome.py'], check=True)
 
 if __name__ == "__main__":
     flush_caches_and_rebuild()
