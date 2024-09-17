@@ -29,16 +29,5 @@ steps:
       - "--allow-unauthenticated"
       - "--memory"
       - "4Gi"
-  # Set IAM policy to allow public access
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    entrypoint: gcloud
-    args:
-      - "run"
-      - "services"
-      - "add-iam-policy-binding"
-      - "newsletter-ai"
-      - "--region=us-west1"
-      - "--member=allUsers"
-      - "--role=roles/run.invoker"
 images:
   - "gcr.io/vodaf24dus-443/newsletter-ai-image:$COMMIT_SHA"
