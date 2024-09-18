@@ -8,8 +8,8 @@ import os
 
 def flush_cache():
     # Clear Streamlit cache
-    st.cache_data.clear()
-    st.cache_resource.clear()
+   # st.cache_data.clear()
+    #st.cache_resource.clear()
     print("Streamlit cache has been cleared.")
 
 def delete_files(file_paths):
